@@ -19,15 +19,79 @@ function ProfileSideBar(propriedades){
   )
 }
 
+function ProfileRelationsBox(propriedades){
+  return <ProfileRelationsBoxWrapper>
+  <h2 className="smallTitle">
+      {propriedades.title} ({propriedades.items.length})
+    </h2>
+  <ul>
+    {/* {propriedades.items.map(item=>{
+      return (
+        <li key={item.id}>
+          <a href={`/users/${item.title}`} key={item.title}>
+            <img src={item.image}/>
+            <span>{item.title}</span>
+          </a>
+        </li>
+      )
+    })} */}
+    </ul>
+  </ProfileRelationsBoxWrapper>
+  }
+
 export default function Home() {
-  const [comunidades, setComunidades] = React.useState([{
-    id: new Date().toISOString(),
-    title: 'Eu odeio acordar cedo',
-    image: 'http://alurakut.vercel.app/capa-comunidade-01.jpg'
-  }]);
+  const [comunidades, setComunidades] = React.useState([
+    //   {
+    //   id: new Date().toISOString(),
+    //   title: 'Eu odeio acordar cedo',
+    //   image: 'http://alurakut.vercel.app/capa-comunidade-01.jpg'
+    // }
+  ]);
   const githubUser = "brunoleonardobr";
   const pessoasFavoritas = ["juunegreiros", "omariosouto", "marcobrunodev", "peas", "rafaballerini", "felipefialho"]
+  const [seguidores,setSeguidores] = React.useState([]);
 
+  React.useEffect(()=>{
+    fetch("https://api.github.com/users/brunoleonardobr/following")
+    .then(function(res){ 
+      if(res.ok){
+        return res.json()
+      }else{
+        throw new Error(res.status);
+      }
+    })
+    .then(function(res){
+      setSeguidores(res)
+    })
+
+    const token = '60631d0037cb09756ef5edccaad027';
+
+    // api graphql
+    fetch('https://graphql.datocms.com/',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        "query": `query {
+          allComunidades {
+            title
+            id
+            imageUrl
+            creatorSlug
+          }
+        }`
+      }),
+    }).then((res)=>res.json()).then(res=>{
+      const comunidadesDato = res.data.allComunidades
+      console.log(comunidadesDato)
+      setComunidades(comunidadesDato)
+    })
+  },[])
+  
   return (
     <>
     <AlurakutMenu/>
@@ -46,11 +110,25 @@ export default function Home() {
             e.preventDefault();
             const dadosDoForm = new FormData(e.target);
             const comunidade = {
-              id: new Date().toISOString,
               title: dadosDoForm.get('title'),
-              image: dadosDoForm.get('image')
+              imageUrl: dadosDoForm.get('image'),
+              creatorSlug: githubUser
             }
-            setComunidades([...comunidades,comunidade]);
+            fetch('/api/comunidades',{
+              method:'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(comunidade)
+            })
+            .then(async (response) => {
+              const dados = await response.json();
+              console.log(dados.registroCriado);
+              const comunidade = dados.registroCriado;
+              const comunidadesAtualizadas = [...comunidades,comunidade];
+              setComunidades(comunidadesAtualizadas)
+            })
+
           }}>
             <div>
             <input 
@@ -74,6 +152,8 @@ export default function Home() {
         </Box>
       </div>
       <div className="profileRelationsArea"  style={{gridArea: 'profileRelationsArea'}}>
+        <ProfileRelationsBox title="Seguidores" items={seguidores}/>
+      
         <ProfileRelationsBoxWrapper>
         <h2 className="smallTitle">
             Comunidades ({comunidades.length})
@@ -82,8 +162,8 @@ export default function Home() {
           {comunidades.map(item=>{
             return (
               <li key={item.id}>
-                <a href={`/users/${item.title}`} key={item.title}>
-                  <img src={item.image}/>
+                <a href={`/comunidades/${item.id}`}>
+                  <img src={item.imageUrl}/>
                   <span>{item.title}</span>
                 </a>
               </li>
